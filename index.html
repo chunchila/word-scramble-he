@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>מילולי - משחק ערבוב מילים</title>
+<meta name="description" content="מילולי - משחק מילים בעברית: פענחו את המילה המעורבבת לפני שנגמר הזמן">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0c1d; --bg2:#1a1433; --card:#241d45; --tile:#322a5e; --tile-on:#4f3fd6;
+  --accent:#8b7bff; --accent2:#ffd166; --good:#3ddc97; --bad:#ff5d73; --text:#f4f1ff; --muted:#a49ad0;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+html,body{margin:0;height:100%;}
+body{
+  font-family:'Heebo',system-ui,sans-serif; color:var(--text);
+  background:radial-gradient(1200px 800px at 80% -10%,#3b2a7a33,transparent),
+             radial-gradient(900px 700px at -10% 110%,#7b3fa033,transparent),var(--bg);
+  display:flex; flex-direction:column; align-items:center; min-height:100%;
+  padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);
+}
+.wrap{width:100%;max-width:520px;display:flex;flex-direction:column;flex:1;}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 6px;}
+.logo{font-weight:900;font-size:26px;letter-spacing:1px;
+  background:linear-gradient(90deg,var(--accent),#c59bff,var(--accent2));
+  -webkit-background-clip:text;background-clip:text;color:transparent;}
+.pill{background:var(--card);border:1px solid #ffffff14;border-radius:999px;padding:5px 14px;font-weight:600;font-size:14px;display:flex;gap:6px;align-items:center;}
+.screen{display:none;flex-direction:column;flex:1;animation:fade .35s ease;}
+.screen.active{display:flex;}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* hero / start */
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;padding:20px 0 40px;}
+.hero h1{font-size:64px;margin:0;line-height:1;
+  background:linear-gradient(135deg,#8b7bff,#e0aaff 45%,#ffd166);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 30px #8b7bff44);}
+.hero p{color:var(--muted);font-size:17px;max-width:320px;margin:0;line-height:1.6;}
+.tiles-demo{display:flex;gap:8px;margin:6px 0 2px;direction:ltr;}
+.tiles-demo span{width:46px;height:52px;border-radius:12px;background:var(--tile);display:grid;place-items:center;font-size:24px;font-weight:800;box-shadow:0 4px 0 #00000055;animation:bob 2.2s ease-in-out infinite;}
+.tiles-demo span:nth-child(2){animation-delay:.15s}.tiles-demo span:nth-child(3){animation-delay:.3s}.tiles-demo span:nth-child(4){animation-delay:.45s}.tiles-demo span:nth-child(5){animation-delay:.6s}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.btn{border:0;cursor:pointer;font-family:inherit;font-weight:800;border-radius:16px;color:#17122e;
+  background:linear-gradient(135deg,var(--accent),#a794ff);padding:15px 42px;font-size:19px;
+  box-shadow:0 8px 24px #8b7bff55,inset 0 1px 0 #ffffff66;transition:transform .12s,box-shadow .2s;}
+.btn:active{transform:scale(.96);}
+.btn.ghost{background:transparent;color:var(--muted);box-shadow:none;border:1px solid #ffffff22;font-weight:600;padding:12px 24px;font-size:15px;}
+.best-chip{color:var(--accent2);font-weight:700;font-size:14px;}
+
+/* hud */
+.hud{display:flex;gap:8px;align-items:center;margin:8px 0 4px;}
+.hud .pill{flex:1;justify-content:center;}
+.dots{display:flex;gap:5px;justify-content:center;margin:8px 0;}
+.dots i{width:9px;height:9px;border-radius:50%;background:#ffffff22;transition:all .3s;}
+.dots i.done{background:var(--good);}
+.dots i.cur{background:var(--accent);transform:scale(1.35);box-shadow:0 0 10px var(--accent);}
+.dots i.skip{background:var(--accent2);}
+.timerbar{height:8px;background:#ffffff14;border-radius:99px;overflow:hidden;margin:6px 0 2px;}
+.timerbar b{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--good),var(--accent2));transition:width .2s linear;}
+.timerbar b.low{background:linear-gradient(90deg,var(--bad),#ff9b6a);}
+
+/* play */
+.clue{margin:14px auto 4px;text-align:center;}
+.clue .cat{display:inline-flex;gap:8px;align-items:center;background:var(--card);border:1px solid #ffffff12;border-radius:999px;padding:7px 18px;font-weight:600;color:var(--muted);}
+.clue .cat b{color:var(--text);}
+.slots{display:flex;gap:7px;justify-content:center;margin:20px 0 8px;min-height:62px;direction:rtl;flex-wrap:wrap;}
+.slot{width:46px;height:56px;border-radius:12px;border:2px dashed #ffffff2b;display:grid;place-items:center;font-size:26px;font-weight:800;cursor:pointer;transition:all .15s;background:#ffffff08;}
+.slot.filled{border:2px solid var(--accent);background:var(--tile-on);box-shadow:0 4px 0 #00000066;animation:pop .18s ease;}
+.slot.hinted{border-color:var(--accent2);color:var(--accent2);}
+@keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+.tray{display:flex;gap:7px;justify-content:center;margin:12px 0 6px;min-height:62px;direction:rtl;flex-wrap:wrap;}
+.tile{width:46px;height:56px;border-radius:12px;background:linear-gradient(180deg,#3c3273,#2c2456);display:grid;place-items:center;font-size:26px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 #00000066,inset 0 1px 0 #ffffff22;transition:transform .12s,opacity .15s;}
+.tile:active{transform:scale(.92);}
+.tile.used{opacity:0;pointer-events:none;transform:scale(.5);}
+.msg{min-height:26px;text-align:center;font-weight:700;font-size:15px;margin:4px 0;}
+.msg.good{color:var(--good);} .msg.bad{color:var(--bad);}
+.controls{display:flex;gap:10px;justify-content:center;margin-top:auto;padding:16px 0 22px;}
+.controls .btn{padding:13px 26px;font-size:17px;flex:1;max-width:200px;}
+.controls .btn.sec{background:var(--card);color:var(--text);box-shadow:0 4px 0 #00000055;border:1px solid #ffffff1c;}
+.shake{animation:shake .4s;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+
+/* end */
+.end{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding-bottom:40px;}
+.end .score-big{font-size:74px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--accent2),#ff9b6a);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.end h2{margin:0;font-size:26px;}
+.end .stats{display:flex;gap:10px;margin:8px 0;}
+.end .stat{background:var(--card);border:1px solid #ffffff12;border-radius:14px;padding:12px 18px;min-width:88px;}
+.end .stat b{display:block;font-size:22px;}
+.end .stat span{color:var(--muted);font-size:12.5px;}
+.newbest{color:var(--accent2);font-weight:800;animation:pop .5s ease;}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:50;}
+@media (max-width:380px){.slot,.tile{width:40px;height:50px;font-size:22px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">מילולי</div>
+    <div class="pill">🏆 <span id="bestTop">0</span></div>
+  </header>
+
+  <section id="scrStart" class="screen active">
+    <div class="hero">
+      <h1>מילולי</h1>
+      <div class="tiles-demo"><span>מ</span><span>י</span><span>ל</span><span>ה</span><span>!</span></div>
+      <p>האותיות מעורבבות, הזמן רץ. סדרו את האותיות וגלו את המילה הנסתרת - 12 סיבובים, כמה שיותר נקודות.</p>
+      <button class="btn" id="btnStart">שחקו ▶</button>
+      <div class="best-chip" id="bestChip"></div>
+    </div>
+  </section>
+
+  <section id="scrGame" class="screen">
+    <div class="hud">
+      <div class="pill">⭐ <span id="score">0</span></div>
+      <div class="pill">🔥 <span id="streak">0</span></div>
+      <div class="pill">⏱️ <span id="time">45</span></div>
+    </div>
+    <div class="dots" id="dots"></div>
+    <div class="timerbar"><b id="tbar"></b></div>
+    <div class="clue"><span class="cat" id="clue"></span></div>
+    <div class="slots" id="slots"></div>
+    <div class="msg" id="msg"></div>
+    <div class="tray" id="tray"></div>
+    <div class="controls">
+      <button class="btn sec" id="btnHint">💡 רמז</button>
+      <button class="btn sec" id="btnSkip">דלגו ⏭</button>
+    </div>
+  </section>
+
+  <section id="scrEnd" class="screen">
+    <div class="end">
+      <h2 id="endTitle">כל הכבוד!</h2>
+      <div class="score-big" id="finalScore">0</div>
+      <div class="newbest" id="newBest" hidden>🏆 שיא חדש!</div>
+      <div class="stats">
+        <div class="stat"><b id="stSolved">0</b><span>מילים</span></div>
+        <div class="stat"><b id="stStreak">0</b><span>רצף שיא</span></div>
+        <div class="stat"><b id="stAcc">0%</b><span>דיוק</span></div>
+      </div>
+      <button class="btn" id="btnAgain">עוד פעם 🔁</button>
+      <button class="btn ghost" id="btnShare">שתפו את התוצאה 📤</button>
+    </div>
+  </section>
+</div>
+<canvas class="confetti" id="confetti"></canvas>
+
+<script>
+"use strict";
+const WORDS = [
+ // חיות
+ {w:"אריה",c:"חיה",e:"🦁"},{w:"פיל",c:"חיה",e:"🐘"},{w:"גמל",c:"חיה",e:"🐪"},{w:"זאב",c:"חיה",e:"🐺"},
+ {w:"דולפין",c:"חיה",e:"🐬"},{w:"נמר",c:"חיה",e:"🐯"},{w:"ציפור",c:"חיה",e:"🐦"},{w:"סוס",c:"חיה",e:"🐴"},
+ {w:"קוף",c:"חיה",e:"🐵"},{w:"צב",c:"חיה",e:"🐢"},{w:"דבורה",c:"חיה",e:"🐝"},{w:"ינשוף",c:"חיה",e:"🦉"},
+ // אוכל
+ {w:"פיצה",c:"אוכל",e:"🍕"},{w:"חומוס",c:"אוכל",e:"🥣"},{w:"בננה",c:"אוכל",e:"🍌"},{w:"עוגה",c:"אוכל",e:"🍰"},
+ {w:"סלט",c:"אוכל",e:"🥗"},{w:"מרק",c:"אוכל",e:"🍲"},{w:"גבינה",c:"אוכל",e:"🧀"},{w:"לחם",c:"אוכל",e:"🍞"},
+ {w:"תפוז",c:"אוכל",e:"🍊"},{w:"ענבים",c:"אוכל",e:"🍇"},{w:"אבטיח",c:"אוכל",e:"🍉"},{w:"שוקולד",c:"אוכל",e:"🍫"},
+ // טבע
+ {w:"הר",c:"טבע",e:"⛰️"},{w:"ים",c:"טבע",e:"🌊"},{w:"יער",c:"טבע",e:"🌲"},{w:"מדבר",c:"טבע",e:"🏜️"},
+ {w:"שמש",c:"טבע",e:"☀️"},{w:"ירח",c:"טבע",e:"🌙"},{w:"כוכב",c:"טבע",e:"⭐"},{w:"ענן",c:"טבע",e:"☁️"},
+ {w:"פרח",c:"טבע",e:"🌸"},{w:"נהר",c:"טבע",e:"🏞️"},{w:"מפל",c:"טבע",e:"💧"},{w:"קשת",c:"טבע",e:"🌈"},
+ // בית
+ {w:"שולחן",c:"בבית",e:"🪑"},{w:"מיטה",c:"בבית",e:"🛏️"},{w:"מנורה",c:"בבית",e:"💡"},{w:"כיסא",c:"בבית",e:"🪑"},
+ {w:"חלון",c:"בבית",e:"🪟"},{w:"דלת",c:"בבית",e:"🚪"},{w:"כרית",c:"בבית",e:"🛋️"},{w:"שטיח",c:"בבית",e:"🧶"},
+ {w:"מקרר",c:"בבית",e:"🧊"},{w:"תנור",c:"בבית",e:"🔥"},{w:"מראה",c:"בבית",e:"🪞"},{w:"שעון",c:"בבית",e:"🕰️"},
+ // מקצועות
+ {w:"רופא",c:"מקצוע",e:"🩺"},{w:"טייס",c:"מקצוע",e:"✈️"},{w:"שף",c:"מקצוע",e:"👨‍🍳"},{w:"שופט",c:"מקצוע",e:"⚖️"},
+ {w:"נהג",c:"מקצוע",e:"🚗"},{w:"זמר",c:"מקצוע",e:"🎤"},{w:"צייר",c:"מקצוע",e:"🎨"},{w:"מורה",c:"מקצוע",e:"📚"},
+ {w:"חשמלאי",c:"מקצוע",e:"🔧"},{w:"כבאי",c:"מקצוע",e:"🚒"},{w:"חקלאי",c:"מקצוע",e:"🌾"},{w:"ספר",c:"מקצוע",e:"💇"},
+ // ערים ומקומות
+ {w:"ירושלים",c:"עיר",e:"🕍"},{w:"חיפה",c:"עיר",e:"⛰️"},{w:"אילת",c:"עיר",e:"🏖️"},{w:"צפת",c:"עיר",e:"🎨"},
+ {w:"באר שבע",c:"עיר",e:"🏜️"},{w:"טבריה",c:"עיר",e:"🌊"},{w:"נתניה",c:"עיר",e:"🏄"},{w:"עכו",c:"עיר",e:"🏰"},
+ // ספורט ומשחק
+ {w:"כדורגל",c:"ספורט",e:"⚽"},{w:"שחייה",c:"ספורט",e:"🏊"},{w:"טניס",c:"ספורט",e:"🎾"},{w:"ריצה",c:"ספורט",e:"🏃"},
+ {w:"אופניים",c:"ספורט",e:"🚴"},{w:"כדורסל",c:"ספורט",e:"🏀"},{w:"גלישה",c:"ספורט",e:"🏄"},{w:"יוגה",c:"ספורט",e:"🧘"},
+ // מוזיקה
+ {w:"גיטרה",c:"מוזיקה",e:"🎸"},{w:"פסנתר",c:"מוזיקה",e:"🎹"},{w:"כינור",c:"מוזיקה",e:"🎻"},{w:"תופים",c:"מוזיקה",e:"🥁"},
+ {w:"חליל",c:"מוזיקה",e:"🎶"},{w:"מקהלה",c:"מוזיקה",e:"🎼"},{w:"שירה",c:"מוזיקה",e:"🎵"},
+ // טכנולוגיה
+ {w:"מחשב",c:"טכנולוגיה",e:"💻"},{w:"טלפון",c:"טכנולוגיה",e:"📱"},{w:"מצלמה",c:"טכנולוגיה",e:"📷"},{w:"רובוט",c:"טכנולוגיה",e:"🤖"},
+ {w:"לוויין",c:"טכנולוגיה",e:"🛰️"},{w:"מסך",c:"טכנולוגיה",e:"🖥️"},{w:"סוללה",c:"טכנולוגיה",e:"🔋"},{w:"אינטרנט",c:"טכנולוגיה",e:"🌐"},
+ // תחבורה
+ {w:"רכבת",c:"תחבורה",e:"🚆"},{w:"מטוס",c:"תחבורה",e:"🛫"},{w:"אוניה",c:"תחבורה",e:"🚢"},{w:"אופנוע",c:"תחבורה",e:"🏍️"},
+ {w:"מונית",c:"תחבורה",e:"🚕"},{w:"מסוק",c:"תחבורה",e:"🚁"},{w:"קורקינט",c:"תחבורה",e:"🛴"},{w:"אוטובוס",c:"תחבורה",e:"🚌"},
+ // מילים יפות
+ {w:"חופש",c:"מושג",e:"🕊️"},{w:"חלום",c:"מושג",e:"💭"},{w:"אהבה",c:"מושג",e:"❤️"},{w:"אומץ",c:"מושג",e:"🦁"},
+ {w:"שקט",c:"מושג",e:"🤫"},{w:"אור",c:"מושג",e:"✨"},{w:"צחוק",c:"מושג",e:"😂"},{w:"ניצחון",c:"מושג",e:"🏆"},
+ {w:"הרפתקה",c:"מושג",e:"🗺️"},{w:"יצירה",c:"מושג",e:"🎭"},{w:"קסם",c:"מושג",e:"🪄"},{w:"אגדה",c:"מושג",e:"📖"}
+];
+const ROUNDS=12, ROUND_TIME=45;
+const $=id=>document.getElementById(id);
+let deck=[], round=0, score=0, streak=0, bestStreak=0, solved=0, tried=0;
+let cur=null, slots=[], usedIdx=[], timeLeft=ROUND_TIME, timer=null, hintUsed=false;
+
+const best=+localStorage.getItem('miluli_best')||0;
+$('bestTop').textContent=best;
+if(best)$('bestChip').textContent='השיא שלכם: '+best+' נקודות';
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');}
+
+function startGame(){
+  deck=shuffle([...WORDS]).slice(0,ROUNDS);
+  round=0;score=0;streak=0;bestStreak=0;solved=0;tried=0;
+  $('score').textContent=0;$('streak').textContent=0;
+  buildDots(); show('scrGame'); nextRound();
+}
+function buildDots(){
+  const d=$('dots');d.innerHTML='';
+  for(let i=0;i<ROUNDS;i++){const dot=document.createElement('i');d.appendChild(dot);}
+  d.children[0].classList.add('cur');
+}
+function nextRound(){
+  if(round>=ROUNDS)return endGame();
+  cur=deck[round]; hintUsed=false; tried++;
+  $('clue').innerHTML=cur.e+' <b>'+cur.c+'</b> · '+cur.w.length+' אותיות';
+  const letters=shuffle([...cur.w]);
+  slots=new Array(cur.w.length).fill(null); usedIdx=new Array(cur.w.length).fill(-1);
+  const sl=$('slots');sl.innerHTML='';
+  slots.forEach((_,i)=>{const s=document.createElement('div');s.className='slot';s.dataset.i=i;
+    s.onclick=()=>removeFrom(i);sl.appendChild(s);});
+  const tr=$('tray');tr.innerHTML='';
+  letters.forEach((ch,i)=>{const t=document.createElement('div');t.className='tile';t.textContent=ch;t.dataset.i=i;
+    t.onclick=()=>placeFrom(i);tr.appendChild(t);});
+  $('msg').textContent='';$('msg').className='msg';
+  timeLeft=ROUND_TIME;updateTimer();
+  clearInterval(timer);timer=setInterval(tick,1000);
+}
+function tick(){
+  timeLeft--;updateTimer();
+  if(timeLeft<=0){clearInterval(timer);onFail('הזמן נגמר! המילה הייתה: '+cur.w);}
+}
+function updateTimer(){
+  $('time').textContent=timeLeft;
+  const b=$('tbar');b.style.width=(timeLeft/ROUND_TIME*100)+'%';
+  b.classList.toggle('low',timeLeft<=10);
+}
+function placeFrom(i){
+  const si=slots.indexOf(null); if(si<0)return;
+  slots[si]=[...$('tray').children][i].textContent; usedIdx[si]=i;
+  const s=$('slots').children[si]; s.textContent=slots[si]; s.classList.add('filled');
+  [...$('tray').children][i].classList.add('used');
+  if(!slots.includes(null))check();
+}
+function removeFrom(si){
+  if(slots[si]==null)return;
+  if($('slots').children[si].classList.contains('hinted'))return;
+  [...$('tray').children][usedIdx[si]].classList.remove('used');
+  slots[si]=null;usedIdx[si]=-1;
+  const s=$('slots').children[si];s.textContent='';s.classList.remove('filled');
+}
+function check(){
+  const guess=slots.join('');
+  if(guess===cur.w){
+    clearInterval(timer);
+    const pts=cur.w.length*10+timeLeft*2+(streak>=2?15:0)+(hintUsed?-10:0);
+    score+=Math.max(pts,5);streak++;bestStreak=Math.max(bestStreak,streak);solved++;
+    $('score').textContent=score;$('streak').textContent=streak;
+    const d=$('dots').children[round];d.classList.remove('cur');d.classList.add('done');
+    say('נכון! +'+Math.max(pts,5)+' 🎉','good');
+    burst();
+    round++;markCur();setTimeout(nextRound,900);
+  }else{
+    say('לא בדיוק... נסו שוב','bad');
+    const sl=$('slots');sl.classList.remove('shake');void sl.offsetWidth;sl.classList.add('shake');
+  }
+}
+function say(t,c){$('msg').textContent=t;$('msg').className='msg '+c;}
+function onFail(text){
+  streak=0;$('streak').textContent=0;
+  const d=$('dots').children[round];d.classList.remove('cur');d.classList.add('skip');
+  say(text,'bad');
+  round++;markCur();setTimeout(nextRound,1400);
+}
+function markCur(){const d=$('dots').children[round];if(d)d.classList.add('cur');}
+
+$('btnHint').onclick=()=>{
+  if(hintUsed||!cur)return; hintUsed=true;
+  const ch=cur.w[0];
+  if(slots[0]==null){
+    const ti=[...$('tray').children].findIndex((t,i)=>!t.classList.contains('used')&&t.textContent===ch);
+    if(ti>=0){slots[0]=ch;usedIdx[0]=ti;
+      const s=$('slots').children[0];s.textContent=ch;s.classList.add('filled','hinted');
+      [...$('tray').children][ti].classList.add('used');}
+  }else{$('slots').children[0].classList.add('hinted');}
+  say('האות הראשונה: '+ch,'');
+  if(!slots.includes(null))check();
+};
+$('btnSkip').onclick=()=>{clearInterval(timer);onFail('דילגתם. המילה הייתה: '+cur.w);};
+$('btnStart').onclick=startGame;
+$('btnAgain').onclick=startGame;
+$('btnShare').onclick=async()=>{
+  const txt='שיחקתי במילולי והשגתי '+score+' נקודות! פענחתי '+solved+' מתוך '+ROUNDS+' מילים 🧩 מצטרפים?';
+  if(navigator.share){try{await navigator.share({text:txt,url:location.href});}catch(e){}}
+  else{try{await navigator.clipboard.writeText(txt+' '+location.href);$('btnShare').textContent='הועתק! ✅';setTimeout(()=>$('btnShare').textContent='שתפו את התוצאה 📤',1800);}catch(e){}}
+};
+function endGame(){
+  clearInterval(timer);
+  $('finalScore').textContent=score;
+  $('stSolved').textContent=solved+'/'+ROUNDS;
+  $('stStreak').textContent=bestStreak;
+  $('stAcc').textContent=Math.round(solved/Math.max(tried,1)*100)+'%';
+  const nb=score>best;
+  if(nb){localStorage.setItem('miluli_best',score);$('bestTop').textContent=score;}
+  $('newBest').hidden=!nb;
+  $('endTitle').textContent=solved>=10?'אלופי המילים! 👑':solved>=7?'כל הכבוד! 🎉':solved>=4?'נחמד מאוד! 💪':'עוד ניסיון? 🌱';
+  show('scrEnd');
+  if(nb)bigBurst();
+}
+// keyboard
+document.addEventListener('keydown',e=>{
+  if(!$('scrGame').classList.contains('active'))return;
+  if(e.key==='Backspace'){for(let i=slots.length-1;i>=0;i--)if(slots[i]!=null){removeFrom(i);break;}}
+  else if(/^[א-ת]$/.test(e.key)){
+    const ti=[...$('tray').children].findIndex(t=>!t.classList.contains('used')&&t.textContent===e.key);
+    if(ti>=0)placeFrom(ti);
+  }
+});
+// confetti
+const cv=$('confetti'),cx=cv.getContext('2d');let parts=[];
+function sizeCv(){cv.width=innerWidth;cv.height=innerHeight;}sizeCv();addEventListener('resize',sizeCv);
+function burst(n=40){for(let i=0;i<n;i++)parts.push({x:innerWidth/2,y:innerHeight/2.4,vx:(Math.random()-.5)*10,vy:Math.random()*-9-3,g:.32,c:`hsl(${Math.random()*360},85%,65%)`,r:Math.random()*5+3,l:1});}
+function bigBurst(){burst(160);setTimeout(()=>burst(120),400);}
+(function loop(){cx.clearRect(0,0,cv.width,cv.height);parts=parts.filter(p=>p.l>0);
+  parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;p.l-=.012;cx.globalAlpha=Math.max(p.l,0);cx.fillStyle=p.c;cx.beginPath();cx.arc(p.x,p.y,p.r,0,7);cx.fill();});
+  cx.globalAlpha=1;requestAnimationFrame(loop);})();
+</script>
+</body>
+</html>
